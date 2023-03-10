@@ -871,7 +871,7 @@ static size_t ts_subtree__write_to_string(
           cursor += snprintf(*writer, limit, "\"%s\"", symbol_name);
         }
       } else {
-        cursor += snprintf(*writer, limit, "(%s", symbol_name);
+        cursor += snprintf(*writer, limit, "(%s [TODO]", symbol_name);
       }
     }
   } else if (is_root) {
