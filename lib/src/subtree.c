@@ -831,7 +831,7 @@ static size_t ts_subtree__write_char_to_string(char *s, size_t n, int32_t c) {
 static const char *ROOT_FIELD = "__ROOT__";
 
 static size_t ts_subtree__write_to_string(
-  Subtree self, char *string, size_t limit,
+  Subtree self, uint32_t start_byte, char *string, size_t limit,
   const TSLanguage *language, bool include_all,
   TSSymbol alias_symbol, bool alias_is_named, const char *field_name
 ) {
@@ -871,7 +871,10 @@ static size_t ts_subtree__write_to_string(
           cursor += snprintf(*writer, limit, "\"%s\"", symbol_name);
         }
       } else {
-        cursor += snprintf(*writer, limit, "(%s [TODO]", symbol_name);
+        // It's important to use total_bytes as it accounts for padding
+        // For reference go to ts_subtree__print_dot_graph@subtree.c:964
+        uint32_t end_byte = start_byte + ts_subtree_total_bytes(self);
+        cursor += snprintf(*writer, limit, "(%s [%u:%u]", symbol_name, start_byte, end_byte);
       }
     }
   } else if (is_root) {
@@ -890,12 +893,13 @@ static size_t ts_subtree__write_to_string(
       &field_map_end
     );
 
+    uint32_t child_start_offset = start_byte;
     uint32_t structural_child_index = 0;
     for (uint32_t i = 0; i < self.ptr->child_count; i++) {
       Subtree child = ts_subtree_children(self)[i];
       if (ts_subtree_extra(child)) {
         cursor += ts_subtree__write_to_string(
-          child, *writer, limit,
+          child, start_byte, *writer, limit,
           language, include_all,
           0, false, NULL
         );
@@ -916,12 +920,13 @@ static size_t ts_subtree__write_to_string(
         }
 
         cursor += ts_subtree__write_to_string(
-          child, *writer, limit,
+          child, child_start_offset, *writer, limit,
           language, include_all,
           alias_symbol, alias_is_named, child_field_name
         );
         structural_child_index++;
       }
+      child_start_offset += ts_subtree_total_bytes(child);
     }
   }
 
@@ -932,18 +937,19 @@ static size_t ts_subtree__write_to_string(
 
 char *ts_subtree_string(
   Subtree self,
+  uint32_t start_byte,
   const TSLanguage *language,
   bool include_all
 ) {
   char scratch_string[1];
   size_t size = ts_subtree__write_to_string(
-    self, scratch_string, 1,
+    self, start_byte, scratch_string, 1,
     language, include_all,
     0, false, ROOT_FIELD
   ) + 1;
   char *result = ts_malloc(size * sizeof(char));
   ts_subtree__write_to_string(
-    self, result, size,
+    self, start_byte, result, size,
     language, include_all,
     0, false, ROOT_FIELD
   );

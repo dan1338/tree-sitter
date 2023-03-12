@@ -424,7 +424,7 @@ const char *ts_node_type(TSNode self) {
 }
 
 char *ts_node_string(TSNode self) {
-  return ts_subtree_string(ts_node__subtree(self), self.tree->language, false);
+  return ts_subtree_string(ts_node__subtree(self), ts_node_start_byte(self), self.tree->language, false);
 }
 
 bool ts_node_eq(TSNode self, TSNode other) {
